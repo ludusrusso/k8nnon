@@ -1,0 +1,33 @@
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  creationTimestamp: null
+  name: manager-role
+rules:
+- apiGroups:
+  - core.k8s.kannon.email
+  resources:
+  - domains
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - core.k8s.kannon.email
+  resources:
+  - domains/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - core.k8s.kannon.email
+  resources:
+  - domains/status
+  verbs:
+  - get
+  - patch
+  - update

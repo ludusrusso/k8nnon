@@ -1,0 +1,9 @@
+apiVersion: core.k8s.kannon.email/v1alpha1
+kind: Domain
+metadata:
+  name: domain-sample
+  namespace: kannon
+spec:
+  domainName: example.com
+  baseDomain: example.com
+  

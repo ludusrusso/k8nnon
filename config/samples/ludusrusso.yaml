@@ -1,0 +1,11 @@
+apiVersion: core.k8s.kannon.email/v1alpha1
+kind: Domain
+metadata:
+  name: fy
+  namespace: kannon
+spec:
+  domainName: k.farmaceuticayounger.science
+  baseDomain: kannon.ludusrusso.dev
+  dkim:
+    selector: kannon
+    publicKey: MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAwShT2IJq04dZa5AZi7ImyZEGAdlgx+6VvN1lJ1NU0BcHybtEyqe5soXdLd3cR3sj0lVM8oBP90LmkST5XFfuYOxos4NF1R4CsyddYFe7M1tGYa4KdI6ftUYdh3I1kPoH/j496jdyWjfKO+Fm5GXiqf1oDYG6KI4Me5X5JHmif+Kjq6pN8qJQ5JzpgXLa0VRRx8l9KYRKnAbgf8gTJNqL69o4vBGADwRLRA6tBfliddzRQLewEyYGZDqhvaHymRnC2TCOfk7269wPfD2SHYUlFaoMKveQjfmkBbn0w07IaA5XTupJ+XnsqelQ4KTJ1OYbRp/5fpjT2g7ZFrpBvbKJ7wIDAQAB
