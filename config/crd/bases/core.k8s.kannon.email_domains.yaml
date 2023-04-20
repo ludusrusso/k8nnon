@@ -15,7 +15,20 @@ spec:
     singular: domain
   scope: Namespaced
   versions:
-  - name: v1alpha1
+  - additionalPrinterColumns:
+    - jsonPath: .spec.domainName
+      name: Domain
+      type: string
+    - jsonPath: .status.dns.dkim
+      name: DNS Check DKIM
+      type: boolean
+    - jsonPath: .status.dns.spf
+      name: DNS Check SPF
+      type: boolean
+    - jsonPath: .status.dns.stats
+      name: DNS Check Stats
+      type: boolean
+    name: v1alpha1
     schema:
       openAPIV3Schema:
         description: Domain is the Schema for the domains API
@@ -46,6 +59,30 @@ spec:
                 type: object
               domainName:
                 type: string
+              ingress:
+                properties:
+                  annotations:
+                    additionalProperties:
+                      type: string
+                    type: object
+                  className:
+                    type: string
+                  service:
+                    properties:
+                      name:
+                        type: string
+                      port:
+                        format: int32
+                        type: integer
+                    required:
+                    - name
+                    - port
+                    type: object
+                required:
+                - annotations
+                - className
+                - service
+                type: object
               statsPrefix:
                 type: string
             type: object

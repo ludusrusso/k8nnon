@@ -19,6 +19,7 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"time"
 
 	netwrkingv1 "k8s.io/api/networking/v1"
@@ -113,6 +114,7 @@ func (r *DomainReconciler) reconcileIngress(ctx context.Context, domain *v1alpha
 	}
 
 	ingress, err = r.buildDesiredIngress(domain)
+
 	if err != nil {
 		return err
 	}
@@ -122,7 +124,7 @@ func (r *DomainReconciler) reconcileIngress(ctx context.Context, domain *v1alpha
 
 func (r *DomainReconciler) handleFoundIngress(ctx context.Context, ingress *netwrkingv1.Ingress, domain *v1alpha1.Domain, l logr.Logger) error {
 	if domain.Status.DNS.Stats {
-		return nil
+		return r.reconcileExistingIngress(ctx, ingress, domain, l)
 	}
 
 	if ingress.DeletionTimestamp == nil {
@@ -130,6 +132,32 @@ func (r *DomainReconciler) handleFoundIngress(ctx context.Context, ingress *netw
 	}
 
 	return nil
+}
+
+func (r *DomainReconciler) reconcileExistingIngress(ctx context.Context, ingress *netwrkingv1.Ingress, domain *v1alpha1.Domain, l logr.Logger) error {
+	toUpdate := false
+	for key, value := range domain.Spec.Ingress.Annotations {
+		if v, ok := ingress.Annotations[key]; !ok || v != value {
+			toUpdate = true
+			ingress.Annotations[key] = value
+		}
+	}
+
+	desiredSpec := buildIngressSpec(domain)
+	if !reflect.DeepEqual(ingress.Spec, desiredSpec) {
+		toUpdate = true
+		ingress.Spec = desiredSpec
+	}
+
+	l.Info("updating ingress", "ingress", ingress, "to update", toUpdate)
+
+	if !toUpdate {
+		return nil
+	}
+
+	l.Info("updating ingress", "ingress", ingress.Spec)
+
+	return r.Update(ctx, ingress)
 }
 
 func (r *DomainReconciler) checkDomainDNS(ctx context.Context, l logr.Logger, domain *corev1alpha1.Domain) (corev1alpha1.DNSStatus, error) {
@@ -159,39 +187,15 @@ func (r *DomainReconciler) checkDomainDNS(ctx context.Context, l logr.Logger, do
 }
 
 func (r *DomainReconciler) buildDesiredIngress(domain *corev1alpha1.Domain) (*netwrkingv1.Ingress, error) {
-	pathPrefix := netwrkingv1.PathTypePrefix
 	name := statsIngressName(domain)
 
 	ing := &netwrkingv1.Ingress{
 		ObjectMeta: v1.ObjectMeta{
-			Name:      name,
-			Namespace: domain.Namespace,
+			Name:        name,
+			Namespace:   domain.Namespace,
+			Annotations: domain.Spec.Ingress.Annotations,
 		},
-		Spec: netwrkingv1.IngressSpec{
-			Rules: []netwrkingv1.IngressRule{
-				{
-					Host: domain.Spec.BaseDomain,
-					IngressRuleValue: netwrkingv1.IngressRuleValue{
-						HTTP: &netwrkingv1.HTTPIngressRuleValue{
-							Paths: []netwrkingv1.HTTPIngressPath{
-								{
-									Path:     "/",
-									PathType: &pathPrefix,
-									Backend: netwrkingv1.IngressBackend{
-										Service: &netwrkingv1.IngressServiceBackend{
-											Name: "k8nnon",
-											Port: netwrkingv1.ServiceBackendPort{
-												Number: 80,
-											},
-										},
-									},
-								},
-							},
-						},
-					},
-				},
-			},
-		},
+		Spec: buildIngressSpec(domain),
 	}
 
 	if err := ctrl.SetControllerReference(domain, ing, r.Scheme); err != nil {
@@ -201,12 +205,50 @@ func (r *DomainReconciler) buildDesiredIngress(domain *corev1alpha1.Domain) (*ne
 	return ing, nil
 }
 
+func buildIngressSpec(domain *corev1alpha1.Domain) netwrkingv1.IngressSpec {
+	pathPrefix := netwrkingv1.PathTypePrefix
+
+	return netwrkingv1.IngressSpec{
+		Rules: []netwrkingv1.IngressRule{
+			{
+				Host: domain.Spec.BaseDomain,
+				IngressRuleValue: netwrkingv1.IngressRuleValue{
+					HTTP: &netwrkingv1.HTTPIngressRuleValue{
+						Paths: []netwrkingv1.HTTPIngressPath{
+							{
+								Path:     "/stats",
+								PathType: &pathPrefix,
+								Backend: netwrkingv1.IngressBackend{
+									Service: ingressService(domain),
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
+func ingressService(domain *corev1alpha1.Domain) *netwrkingv1.IngressServiceBackend {
+	return &netwrkingv1.IngressServiceBackend{
+		Name: domain.Spec.Ingress.Service.Name,
+		Port: netwrkingv1.ServiceBackendPort{
+			Number: domain.Spec.Ingress.Service.Port,
+		},
+	}
+}
+
 func statsIngressName(domain *corev1alpha1.Domain) string {
 	return fmt.Sprintf("%s-stats", domain.Name)
 }
 
+func dnsReady(dnsStatus corev1alpha1.DNSStatus) bool {
+	return dnsStatus.DKIN && dnsStatus.Stats && dnsStatus.SFP
+}
+
 func computeReconcileInterval(domain *corev1alpha1.Domain) time.Duration {
-	if domain.Status.DNS.Stats && domain.Status.DNS.SFP && domain.Status.DNS.DKIN {
+	if dnsReady(domain.Status.DNS) {
 		return 1 * time.Hour
 	}
 

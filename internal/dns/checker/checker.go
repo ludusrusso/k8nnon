@@ -74,7 +74,7 @@ func (d DNSChecker) CheckDomainSPF(ctx context.Context, domain *corev1alpha1.Dom
 }
 
 func (d DNSChecker) CheckDomainStatsDNS(ctx context.Context, domain *corev1alpha1.Domain) (bool, error) {
-	statsDomain := fmt.Sprintf("stats.%s", domain.Spec.DomainName)
+	statsDomain := fmt.Sprintf("%s.%s", domain.Spec.StatsPrefix, domain.Spec.DomainName)
 
 	res, err := d.r.LookupCNAME(ctx, statsDomain)
 	if err != nil {
