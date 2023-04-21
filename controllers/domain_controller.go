@@ -207,11 +207,14 @@ func (r *DomainReconciler) buildDesiredIngress(domain *corev1alpha1.Domain) (*ne
 
 func buildIngressSpec(domain *corev1alpha1.Domain) netwrkingv1.IngressSpec {
 	pathPrefix := netwrkingv1.PathTypePrefix
+	statsDomain := fmt.Sprintf("%s.%s", domain.Spec.StatsPrefix, domain.Spec.DomainName)
+
+	tlsSecret := fmt.Sprintf("%s-tls", statsDomain)
 
 	return netwrkingv1.IngressSpec{
 		Rules: []netwrkingv1.IngressRule{
 			{
-				Host: domain.Spec.BaseDomain,
+				Host: statsDomain,
 				IngressRuleValue: netwrkingv1.IngressRuleValue{
 					HTTP: &netwrkingv1.HTTPIngressRuleValue{
 						Paths: []netwrkingv1.HTTPIngressPath{
@@ -225,6 +228,12 @@ func buildIngressSpec(domain *corev1alpha1.Domain) netwrkingv1.IngressSpec {
 						},
 					},
 				},
+			},
+		},
+		TLS: []netwrkingv1.IngressTLS{
+			{
+				Hosts:      []string{statsDomain},
+				SecretName: tlsSecret,
 			},
 		},
 	}
