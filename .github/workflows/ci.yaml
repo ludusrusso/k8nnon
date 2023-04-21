@@ -1,0 +1,53 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - 'main'
+  pull_request:
+    branches:
+      - 'main'
+
+jobs:
+  test:
+    runs-on: ubuntu-20.04
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Set up Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: "1.20"
+      - name: Build
+        run: go build -v ./...
+      - name: Test
+        run: go test -v ./...
+  build:
+    runs-on: ubuntu-20.04
+    needs: test
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Log in to the Container registry
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Get Vars
+        id: get_vars
+        run: |
+          echo "ts=$(date +%s)" >> $GITHUB_OUTPUT
+          echo "sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+          echo "branch=$(git rev-parse --abbrev-ref HEAD)" >> $GITHUB_OUTPUT
+      - name: Build Kannon
+        uses: ./.github/actions/build-docker
+        with:
+          docker-target: kannon
+          branch: ${{ steps.get_vars.outputs.branch }}
+          sha: ${{ steps.get_vars.outputs.sha }}
+          ts: ${{ steps.get_vars.outputs.ts }}
+          push: ${{ github.ref == 'refs/heads/main' }}
