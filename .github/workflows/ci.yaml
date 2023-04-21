@@ -46,7 +46,7 @@ jobs:
       - name: Build Kannon
         uses: ./.github/actions/build-docker
         with:
-          docker-target: kannon
+          docker-target: k8nnon
           branch: ${{ steps.get_vars.outputs.branch }}
           sha: ${{ steps.get_vars.outputs.sha }}
           ts: ${{ steps.get_vars.outputs.ts }}
