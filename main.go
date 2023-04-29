@@ -18,7 +18,6 @@ package main
 
 import (
 	"flag"
-	"net"
 	"os"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
@@ -35,6 +34,7 @@ import (
 	corev1alpha1 "github.com/kannon-email/k8nnon/api/v1alpha1"
 	"github.com/kannon-email/k8nnon/controllers"
 	"github.com/kannon-email/k8nnon/internal/dns/checker"
+	"github.com/kannon-email/k8nnon/internal/dns/resolver"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -91,10 +91,12 @@ func main() {
 		os.Exit(1)
 	}
 
+	resolvers := resolver.NewResolvers(checker.ServerAddresses...)
+
 	if err = (&controllers.DomainReconciler{
 		Client:     mgr.GetClient(),
 		Scheme:     mgr.GetScheme(),
-		DNSChecker: *checker.NewDNSChecker(net.DefaultResolver),
+		DNSChecker: *checker.NewDNSChecker(resolvers...),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Domain")
 		os.Exit(1)
