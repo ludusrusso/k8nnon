@@ -3,12 +3,10 @@ module github.com/kannon-email/k8nnon
 go 1.20
 
 require (
-	github.com/docker/docker v23.0.3+incompatible
 	github.com/foxcpp/go-mockdns v1.0.0
 	github.com/go-logr/logr v1.2.3
 	github.com/onsi/ginkgo/v2 v2.6.0
 	github.com/onsi/gomega v1.24.1
-	github.com/smartystreets/assertions v1.13.1
 	github.com/stretchr/testify v1.8.0
 	k8s.io/api v0.26.0
 	k8s.io/apimachinery v0.26.0
@@ -66,7 +64,6 @@ require (
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	gotest.tools/v3 v3.0.3 // indirect
 	k8s.io/apiextensions-apiserver v0.26.0 // indirect
 	k8s.io/component-base v0.26.0 // indirect
 	k8s.io/klog/v2 v2.80.1 // indirect

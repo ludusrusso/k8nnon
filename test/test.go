@@ -13,7 +13,7 @@ func main() {
 	resolvers := resolver.NewResolvers(checker.ServerAddresses...)
 	c := checker.NewDNSChecker(resolvers...)
 
-	res, err := c.CheckDomainStatsDNS(context.Background(), &v1alpha1.Domain{
+	res := c.CheckDomainStatsDNS(context.Background(), &v1alpha1.Domain{
 		Spec: v1alpha1.DomainSpec{
 			DomainName:  "kd.ludusrusso.dev",
 			BaseDomain:  "kannon.ludusrusso.dev",
@@ -21,5 +21,5 @@ func main() {
 		},
 	})
 
-	fmt.Printf("%v %v", res, err)
+	fmt.Printf("%#v", res)
 }

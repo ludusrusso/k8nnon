@@ -19,13 +19,13 @@ spec:
     - jsonPath: .spec.domainName
       name: Domain
       type: string
-    - jsonPath: .status.dns.dkim
+    - jsonPath: .status.dns.dkim.ok
       name: DNS Check DKIM
       type: boolean
-    - jsonPath: .status.dns.spf
+    - jsonPath: .status.dns.spf.ok
       name: DNS Check SPF
       type: boolean
-    - jsonPath: .status.dns.stats
+    - jsonPath: .status.dns.stats.ok
       name: DNS Check Stats
       type: boolean
     name: v1alpha1
@@ -92,11 +92,53 @@ spec:
               dns:
                 properties:
                   dkim:
-                    type: boolean
+                    properties:
+                      cnt_err:
+                        type: integer
+                      cnt_ko:
+                        type: integer
+                      cnt_ok:
+                        type: integer
+                      ok:
+                        type: boolean
+                    required:
+                    - cnt_err
+                    - cnt_ko
+                    - cnt_ok
+                    - ok
+                    type: object
                   spf:
-                    type: boolean
+                    properties:
+                      cnt_err:
+                        type: integer
+                      cnt_ko:
+                        type: integer
+                      cnt_ok:
+                        type: integer
+                      ok:
+                        type: boolean
+                    required:
+                    - cnt_err
+                    - cnt_ko
+                    - cnt_ok
+                    - ok
+                    type: object
                   stats:
-                    type: boolean
+                    properties:
+                      cnt_err:
+                        type: integer
+                      cnt_ko:
+                        type: integer
+                      cnt_ok:
+                        type: integer
+                      ok:
+                        type: boolean
+                    required:
+                    - cnt_err
+                    - cnt_ko
+                    - cnt_ok
+                    - ok
+                    type: object
                 required:
                 - dkim
                 - spf

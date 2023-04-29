@@ -109,7 +109,7 @@ func (r *DomainReconciler) reconcileIngress(ctx context.Context, domain *v1alpha
 		return err
 	}
 
-	if !domain.Status.DNS.Stats {
+	if !domain.Status.DNS.Stats.OK {
 		return nil
 	}
 
@@ -123,7 +123,7 @@ func (r *DomainReconciler) reconcileIngress(ctx context.Context, domain *v1alpha
 }
 
 func (r *DomainReconciler) handleFoundIngress(ctx context.Context, ingress *netwrkingv1.Ingress, domain *v1alpha1.Domain, l logr.Logger) error {
-	if domain.Status.DNS.Stats {
+	if domain.Status.DNS.Stats.OK {
 		return r.reconcileExistingIngress(ctx, ingress, domain, l)
 	}
 
@@ -160,30 +160,27 @@ func (r *DomainReconciler) reconcileExistingIngress(ctx context.Context, ingress
 	return r.Update(ctx, ingress)
 }
 
+func mapDNSCheckStats2DomainDNSResult(stats checker.DNSCheckStats) corev1alpha1.DNSStatusStats {
+	return corev1alpha1.DNSStatusStats{
+		OK:     stats.Result(),
+		CntOK:  stats.CntOK,
+		CntErr: stats.CntErr,
+		CntKO:  stats.CntKO,
+	}
+}
+
 func (r *DomainReconciler) checkDomainDNS(ctx context.Context, l logr.Logger, domain *corev1alpha1.Domain) (corev1alpha1.DNSStatus, error) {
 	l.Info("checking domain dns", "domain", domain.Spec.BaseDomain)
-	dnsStatus := corev1alpha1.DNSStatus{}
 
-	var err error
+	dkimStats := r.DNSChecker.CheckDomainDKim(ctx, domain)
+	spfStats := r.DNSChecker.CheckDomainSPF(ctx, domain)
+	domainStats := r.DNSChecker.CheckDomainStatsDNS(ctx, domain)
 
-	if dnsStatus.DKIN, err = r.DNSChecker.CheckDomainDKim(ctx, domain); err != nil {
-		l.Error(err, "failed to check dkim", "domain", domain)
-		return corev1alpha1.DNSStatus{}, err
-	}
-
-	if dnsStatus.Stats, err = r.DNSChecker.CheckDomainStatsDNS(ctx, domain); err != nil {
-		l.Error(err, "failed to check dns stats", "domain", domain)
-		return corev1alpha1.DNSStatus{}, err
-	}
-
-	if dnsStatus.SFP, err = r.DNSChecker.CheckDomainSPF(ctx, domain); err != nil {
-		l.Error(err, "failed to check dns spf", "domain", domain)
-		return corev1alpha1.DNSStatus{}, err
-	}
-
-	l.Info("domain dns checked", "domain", dnsStatus)
-
-	return dnsStatus, nil
+	return corev1alpha1.DNSStatus{
+		Stats: mapDNSCheckStats2DomainDNSResult(domainStats),
+		DKIM:  mapDNSCheckStats2DomainDNSResult(dkimStats),
+		SFP:   mapDNSCheckStats2DomainDNSResult(spfStats),
+	}, nil
 }
 
 func (r *DomainReconciler) buildDesiredIngress(domain *corev1alpha1.Domain) (*netwrkingv1.Ingress, error) {
@@ -253,7 +250,7 @@ func statsIngressName(domain *corev1alpha1.Domain) string {
 }
 
 func dnsReady(dnsStatus corev1alpha1.DNSStatus) bool {
-	return dnsStatus.DKIN && dnsStatus.Stats && dnsStatus.SFP
+	return dnsStatus.DKIM.OK && dnsStatus.Stats.OK && dnsStatus.SFP.OK
 }
 
 func computeReconcileInterval(domain *corev1alpha1.Domain) time.Duration {
