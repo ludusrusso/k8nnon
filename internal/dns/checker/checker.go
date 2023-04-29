@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"strings"
+	"sync"
 
 	corev1alpha1 "github.com/kannon-email/k8nnon/api/v1alpha1"
 	"github.com/kannon-email/k8nnon/internal/dns/resolver"
@@ -47,23 +48,58 @@ func (d DNSChecker) CheckDomainStatsDNS(ctx context.Context, domain *corev1alpha
 
 func (d DNSChecker) checkDNS(ctx context.Context, domain *corev1alpha1.Domain, checkFunc checkFunc) (bool, error) {
 	majority := 0
-	for _, resolver := range d.resolvers {
-		status, err := checkFunc(ctx, resolver, domain)
-		if err != nil {
-			dnsErr, ok := err.(*net.DNSError)
-			if ok && dnsErr.IsTimeout {
-				continue
-			}
-			return false, err
+	wg := sync.WaitGroup{}
+	m := sync.Mutex{}
+
+	errCh := make(chan error)
+	resCh := make(chan bool)
+
+	go func() {
+		innertCtx, cancel := context.WithCancel(ctx)
+		defer cancel()
+
+		for _, res := range d.resolvers {
+			wg.Add(1)
+
+			go func(r resolver.Resolver) {
+				defer wg.Done()
+
+				status, err := checkFunc(innertCtx, r, domain)
+				if err != nil {
+					dnsErr, ok := err.(*net.DNSError)
+					if ok && dnsErr.IsTimeout {
+						return
+					}
+					errCh <- err
+					cancel()
+					return
+				}
+
+				m.Lock()
+				if status {
+					majority += 1
+				} else {
+					majority -= 1
+				}
+				m.Unlock()
+			}(res)
 		}
 
-		if status {
-			majority += 1
-		} else {
-			majority -= 1
+		wg.Wait()
+		resCh <- majority > 0
+	}()
+
+	select {
+	case err := <-errCh:
+		{
+			return false, err
+		}
+	case res := <-resCh:
+		{
+			return res, nil
 		}
 	}
-	return majority > 0, nil
+
 }
 
 func checkDomainDKim(ctx context.Context, r resolver.Resolver, domain *corev1alpha1.Domain) (bool, error) {
