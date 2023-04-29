@@ -29,9 +29,8 @@ func TestDKimNotOk(t *testing.T) {
 
 	c := checker.NewDNSChecker(&r)
 
-	res, err := c.CheckDomainDKim(ctx, domain)
-	assert.Nil(t, err)
-	assert.False(t, res, "should not have resolved DKIN")
+	res := c.CheckDomainDKim(ctx, domain)
+	assert.False(t, res.Result(), "should not have resolved DKIM")
 }
 
 func TestDKimOk(t *testing.T) {
@@ -51,9 +50,8 @@ func TestDKimOk(t *testing.T) {
 
 	c := checker.NewDNSChecker(&r)
 
-	res, err := c.CheckDomainDKim(ctx, domain)
-	assert.Nil(t, err)
-	assert.True(t, res, "should have resolved DKIN")
+	res := c.CheckDomainDKim(ctx, domain)
+	assert.True(t, res.Result(), "should have resolved DKIM")
 }
 
 func TestDKimMultipleOK(t *testing.T) {
@@ -93,9 +91,10 @@ func TestDKimMultipleOK(t *testing.T) {
 
 	c := checker.NewDNSChecker(r...)
 
-	res, err := c.CheckDomainDKim(ctx, domain)
-	assert.Nil(t, err)
-	assert.True(t, res, "should have resolved DKIN")
+	res := c.CheckDomainDKim(ctx, domain)
+	assert.True(t, res.Result(), "should have resolved DKIM")
+	assert.Equal(t, 2, res.CntOK)
+	assert.Equal(t, 1, res.CntKO)
 }
 
 func TestDKimMultipleKO(t *testing.T) {
@@ -129,12 +128,13 @@ func TestDKimMultipleKO(t *testing.T) {
 
 	c := checker.NewDNSChecker(r...)
 
-	res, err := c.CheckDomainDKim(ctx, domain)
-	assert.Nil(t, err)
-	assert.False(t, res, "should have resolved DKIN")
+	res := c.CheckDomainDKim(ctx, domain)
+	assert.False(t, res.Result(), "should have resolved DKIM")
+	assert.Equal(t, 2, res.CntKO)
+	assert.Equal(t, 1, res.CntOK)
 }
 
-func TestDKINWithoutHost(t *testing.T) {
+func TestDKIMWithoutHost(t *testing.T) {
 	ctx := createContext(t)
 
 	r := mockdns.Resolver{}
@@ -142,9 +142,8 @@ func TestDKINWithoutHost(t *testing.T) {
 	domain := createDomain(t)
 	c := checker.NewDNSChecker(&r)
 
-	res, err := c.CheckDomainDKim(ctx, domain)
-	assert.Nil(t, err)
-	assert.False(t, res, "should not have resolved SPF")
+	res := c.CheckDomainDKim(ctx, domain)
+	assert.False(t, res.Result(), "should not have resolved SPF")
 }
 
 func TestSPFNotOk(t *testing.T) {
@@ -164,9 +163,8 @@ func TestSPFNotOk(t *testing.T) {
 
 	c := checker.NewDNSChecker(&r)
 
-	res, err := c.CheckDomainSPF(ctx, domain)
-	assert.Nil(t, err)
-	assert.False(t, res, "should not have resolved SPF")
+	res := c.CheckDomainSPF(ctx, domain)
+	assert.False(t, res.Result(), "should not have resolved SPF")
 }
 
 func TestSPFOk(t *testing.T) {
@@ -186,9 +184,8 @@ func TestSPFOk(t *testing.T) {
 
 	c := checker.NewDNSChecker(&r)
 
-	res, err := c.CheckDomainSPF(ctx, domain)
-	assert.Nil(t, err)
-	assert.True(t, res, "should have resolved SPF")
+	res := c.CheckDomainSPF(ctx, domain)
+	assert.True(t, res.Result(), "should have resolved SPF")
 }
 
 func TestStatsWithoutHost(t *testing.T) {
@@ -199,9 +196,8 @@ func TestStatsWithoutHost(t *testing.T) {
 	domain := createDomain(t)
 	c := checker.NewDNSChecker(&r)
 
-	res, err := c.CheckDomainStatsDNS(ctx, domain)
-	assert.Nil(t, err)
-	assert.False(t, res, "should not have resolved CNAME")
+	res := c.CheckDomainStatsDNS(ctx, domain)
+	assert.False(t, res.Result(), "should not have resolved CNAME")
 }
 
 func TestStatsNotOk(t *testing.T) {
@@ -219,9 +215,8 @@ func TestStatsNotOk(t *testing.T) {
 
 	c := checker.NewDNSChecker(&r)
 
-	res, err := c.CheckDomainStatsDNS(ctx, domain)
-	assert.Nil(t, err)
-	assert.False(t, res, "should not have resolved CANME")
+	res := c.CheckDomainStatsDNS(ctx, domain)
+	assert.False(t, res.Result(), "should not have resolved CANME")
 }
 
 func TestStatsOk(t *testing.T) {
@@ -239,9 +234,8 @@ func TestStatsOk(t *testing.T) {
 
 	c := checker.NewDNSChecker(&r)
 
-	res, err := c.CheckDomainStatsDNS(ctx, domain)
-	assert.Nil(t, err)
-	assert.True(t, res, "should have resolved CNAME")
+	res := c.CheckDomainStatsDNS(ctx, domain)
+	assert.True(t, res.Result(), "should have resolved CNAME")
 }
 
 func TestSPFNWithoutHost(t *testing.T) {
@@ -252,9 +246,8 @@ func TestSPFNWithoutHost(t *testing.T) {
 	domain := createDomain(t)
 	c := checker.NewDNSChecker(&r)
 
-	res, err := c.CheckDomainSPF(ctx, domain)
-	assert.Nil(t, err)
-	assert.False(t, res, "should not have resolved SPF")
+	res := c.CheckDomainSPF(ctx, domain)
+	assert.False(t, res.Result(), "should not have resolved SPF")
 }
 
 func TestLoopupCname(t *testing.T) {

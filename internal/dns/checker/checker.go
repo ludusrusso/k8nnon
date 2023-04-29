@@ -17,15 +17,25 @@ type DNSChecker struct {
 
 var ServerAddresses = []string{
 	"8.8.8.8",
-	"8.8.4.4",
-	"9.9.9.9",
+	// "8.8.4.4",
+	// "9.9.9.9",
 	"149.112.112.112",
 	"208.67.222.222",
 	"208.67.220.220",
-	"1.1.1.1",
+	// "1.1.1.1",
 	"1.0.0.1",
 	"8.26.56.26",
 	"8.20.247.20",
+}
+
+type DNSCheckStats struct {
+	CntOK  int
+	CntKO  int
+	CntErr int
+}
+
+func (c DNSCheckStats) Result() bool {
+	return c.CntOK > c.CntKO+c.CntErr
 }
 
 func NewDNSChecker(r ...resolver.Resolver) *DNSChecker {
@@ -34,72 +44,50 @@ func NewDNSChecker(r ...resolver.Resolver) *DNSChecker {
 
 type checkFunc func(ctx context.Context, r resolver.Resolver, domain *corev1alpha1.Domain) (bool, error)
 
-func (d DNSChecker) CheckDomainDKim(ctx context.Context, domain *corev1alpha1.Domain) (bool, error) {
+func (d DNSChecker) CheckDomainDKim(ctx context.Context, domain *corev1alpha1.Domain) DNSCheckStats {
 	return d.checkDNS(ctx, domain, checkDomainDKim)
 }
 
-func (d DNSChecker) CheckDomainSPF(ctx context.Context, domain *corev1alpha1.Domain) (bool, error) {
+func (d DNSChecker) CheckDomainSPF(ctx context.Context, domain *corev1alpha1.Domain) DNSCheckStats {
 	return d.checkDNS(ctx, domain, checkDomainSPF)
 }
 
-func (d DNSChecker) CheckDomainStatsDNS(ctx context.Context, domain *corev1alpha1.Domain) (bool, error) {
+func (d DNSChecker) CheckDomainStatsDNS(ctx context.Context, domain *corev1alpha1.Domain) DNSCheckStats {
 	return d.checkDNS(ctx, domain, checkDomainStatsDNS)
 }
 
-func (d DNSChecker) checkDNS(ctx context.Context, domain *corev1alpha1.Domain, checkFunc checkFunc) (bool, error) {
-	majority := 0
+func (d DNSChecker) checkDNS(ctx context.Context, domain *corev1alpha1.Domain, checkFunc checkFunc) DNSCheckStats {
+	result := DNSCheckStats{}
+
 	wg := sync.WaitGroup{}
 	m := sync.Mutex{}
 
-	errCh := make(chan error)
-	resCh := make(chan bool)
+	innertCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
 
-	go func() {
-		innertCtx, cancel := context.WithCancel(ctx)
-		defer cancel()
+	for _, res := range d.resolvers {
+		wg.Add(1)
 
-		for _, res := range d.resolvers {
-			wg.Add(1)
+		go func(r resolver.Resolver) {
+			defer wg.Done()
 
-			go func(r resolver.Resolver) {
-				defer wg.Done()
-
-				status, err := checkFunc(innertCtx, r, domain)
-				if err != nil {
-					dnsErr, ok := err.(*net.DNSError)
-					if ok && dnsErr.IsTimeout {
-						return
-					}
-					errCh <- err
-					cancel()
-					return
-				}
-
-				m.Lock()
-				if status {
-					majority += 1
-				} else {
-					majority -= 1
-				}
-				m.Unlock()
-			}(res)
-		}
-
-		wg.Wait()
-		resCh <- majority > 0
-	}()
-
-	select {
-	case err := <-errCh:
-		{
-			return false, err
-		}
-	case res := <-resCh:
-		{
-			return res, nil
-		}
+			status, err := checkFunc(innertCtx, r, domain)
+			m.Lock()
+			if err != nil {
+				result.CntErr += 1
+			}
+			if status {
+				result.CntOK += 1
+			} else {
+				result.CntKO += 1
+			}
+			m.Unlock()
+		}(res)
 	}
 
+	wg.Wait()
+
+	return result
 }
 
 func checkDomainDKim(ctx context.Context, r resolver.Resolver, domain *corev1alpha1.Domain) (bool, error) {

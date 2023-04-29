@@ -76,9 +76,16 @@ type DomainStatus struct {
 }
 
 type DNSStatus struct {
-	Stats bool `json:"stats"`
-	DKIN  bool `json:"dkim"`
-	SFP   bool `json:"spf"`
+	Stats DNSStatusStats `json:"stats"`
+	DKIM  DNSStatusStats `json:"dkim"`
+	SFP   DNSStatusStats `json:"spf"`
+}
+
+type DNSStatusStats struct {
+	OK     bool `json:"ok"`
+	CntOK  int  `json:"cnt_ok"`
+	CntErr int  `json:"cnt_err"`
+	CntKO  int  `json:"cnt_ko"`
 }
 
 //+kubebuilder:object:root=true
@@ -86,9 +93,9 @@ type DNSStatus struct {
 
 // Domain is the Schema for the domains API
 // +kubebuilder:printcolumn:name="Domain",type=string,JSONPath=`.spec.domainName`
-// +kubebuilder:printcolumn:name="DNS Check DKIM",type=boolean,JSONPath=`.status.dns.dkim`
-// +kubebuilder:printcolumn:name="DNS Check SPF",type=boolean,JSONPath=`.status.dns.spf`
-// +kubebuilder:printcolumn:name="DNS Check Stats",type=boolean,JSONPath=`.status.dns.stats`
+// +kubebuilder:printcolumn:name="DNS Check DKIM",type=boolean,JSONPath=`.status.dns.dkim.ok`
+// +kubebuilder:printcolumn:name="DNS Check SPF",type=boolean,JSONPath=`.status.dns.spf.ok`
+// +kubebuilder:printcolumn:name="DNS Check Stats",type=boolean,JSONPath=`.status.dns.stats.ok`
 type Domain struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
