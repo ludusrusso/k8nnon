@@ -27,14 +27,14 @@ func NewResolvers(address ...string) []Resolver {
 	return resolvers
 }
 
-func newResolver(address string) Resolver {
+func newResolver(addr string) Resolver {
 	return &net.Resolver{
 		PreferGo: true,
 		Dial: func(ctx context.Context, network, address string) (net.Conn, error) {
 			d := net.Dialer{
 				Timeout: time.Millisecond * time.Duration(10000),
 			}
-			return d.DialContext(ctx, "udp", address+":53")
+			return d.DialContext(ctx, "udp", addr+":53")
 		},
 	}
 }

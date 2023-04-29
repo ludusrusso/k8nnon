@@ -14,6 +14,19 @@ type DNSChecker struct {
 	resolvers []resolver.Resolver
 }
 
+var ServerAddresses = []string{
+	"8.8.8.8",
+	"8.8.4.4",
+	"9.9.9.9",
+	"149.112.112.112",
+	"208.67.222.222",
+	"208.67.220.220",
+	"1.1.1.1",
+	"1.0.0.1",
+	"8.26.56.26",
+	"8.20.247.20",
+}
+
 func NewDNSChecker(r ...resolver.Resolver) *DNSChecker {
 	return &DNSChecker{resolvers: r}
 }
@@ -37,6 +50,10 @@ func (d DNSChecker) checkDNS(ctx context.Context, domain *corev1alpha1.Domain, c
 	for _, resolver := range d.resolvers {
 		status, err := checkFunc(ctx, resolver, domain)
 		if err != nil {
+			dnsErr, ok := err.(*net.DNSError)
+			if ok && dnsErr.IsTimeout {
+				continue
+			}
 			return false, err
 		}
 
