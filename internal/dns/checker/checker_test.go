@@ -9,6 +9,7 @@ import (
 
 	corev1alpha1 "github.com/kannon-email/k8nnon/api/v1alpha1"
 	"github.com/kannon-email/k8nnon/internal/dns/checker"
+	"github.com/kannon-email/k8nnon/internal/dns/resolver"
 )
 
 func TestDKimNotOk(t *testing.T) {
@@ -53,6 +54,84 @@ func TestDKimOk(t *testing.T) {
 	res, err := c.CheckDomainDKim(ctx, domain)
 	assert.Nil(t, err)
 	assert.True(t, res, "should have resolved DKIN")
+}
+
+func TestDKimMultipleOK(t *testing.T) {
+	ctx := createContext(t)
+
+	r := []resolver.Resolver{
+		&mockdns.Resolver{
+			Zones: map[string]mockdns.Zone{
+				"selector._domainkey.example.com.": {
+					TXT: []string{
+						"k=rsa; p=publicKey",
+					},
+				},
+			},
+		},
+		&mockdns.Resolver{
+			Zones: map[string]mockdns.Zone{
+				"selector._domainkey.example.com.": {
+					TXT: []string{
+						"k=rsa; p=publicKey",
+					},
+				},
+			},
+		},
+		&mockdns.Resolver{
+			Zones: map[string]mockdns.Zone{
+				"selector._domainkey.example.com.": {
+					TXT: []string{
+						"k=rsa; p=publicKeyErr",
+					},
+				},
+			},
+		},
+	}
+
+	domain := createDomain(t)
+
+	c := checker.NewDNSChecker(r...)
+
+	res, err := c.CheckDomainDKim(ctx, domain)
+	assert.Nil(t, err)
+	assert.True(t, res, "should have resolved DKIN")
+}
+
+func TestDKimMultipleKO(t *testing.T) {
+	ctx := createContext(t)
+
+	r := []resolver.Resolver{
+		&mockdns.Resolver{
+			Zones: map[string]mockdns.Zone{
+				"selector._domainkey.example.com.": {
+					TXT: []string{
+						"k=rsa; p=publicKey",
+					},
+				},
+			},
+		},
+		&mockdns.Resolver{
+			Zones: map[string]mockdns.Zone{},
+		},
+		&mockdns.Resolver{
+			Zones: map[string]mockdns.Zone{
+				"selector._domainkey.example.com.": {
+					TXT: []string{
+						"k=rsa; p=publicKeyErr",
+					},
+				},
+			},
+		},
+	}
+
+	domain := createDomain(t)
+
+	c := checker.NewDNSChecker(r...)
+
+	res, err := c.CheckDomainDKim(ctx, domain)
+	assert.Nil(t, err)
+	assert.False(t, res, "should have resolved DKIN")
 }
 
 func TestDKINWithoutHost(t *testing.T) {
